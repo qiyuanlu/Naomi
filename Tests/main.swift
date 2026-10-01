@@ -28,3 +28,11 @@ pet.poke(leftHalf: false); assert(pet.mood == .runningLeft)
 pet.stopAtEdge(); assert(pet.mood == .sitting)
 pet.advance(180); pet.settle(); assert(pet.mood == .sitting && pet.unattended == 0)
 print("PASS: quiet start, 120-second rest, 180-second sleep, click directions, brief run, wake/reset, stop at edge")
+
+assert(PetPresentation(mood: .resting, isCarried: false) == .lying)
+assert(PetPresentation(mood: .asleep, isCarried: false) == .sleeping)
+for mood: PetMood in [.sitting, .resting, .asleep, .runningLeft, .runningRight] {
+    assert(PetPresentation(mood: mood, isCarried: true) == .carried)
+}
+assert(PetPresentation(mood: .sitting, isCarried: false) == .sprite)
+print("PASS: side-lying rest/sleep, carried override in all states, release restores sitting")

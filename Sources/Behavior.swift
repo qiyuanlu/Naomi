@@ -19,3 +19,14 @@ struct PetBehavior {
         mood = unattended >= 180 ? .asleep : unattended >= 120 ? .resting : .sitting
     }
 }
+
+// Kept separate from elapsed-time behavior: lifting always overrides the idle pose.
+enum PetPresentation: Equatable {
+    case sprite, lying, sleeping, carried
+    init(mood: PetMood, isCarried: Bool) {
+        if isCarried { self = .carried }
+        else if mood == .asleep { self = .sleeping }
+        else if mood == .resting { self = .lying }
+        else { self = .sprite }
+    }
+}

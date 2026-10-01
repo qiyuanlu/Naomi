@@ -1,14 +1,14 @@
 # Naomi · 糯米桌面伙伴
 
-轻量原生 macOS 桌面宠物，使用 Swift + AppKit。当前版本 **0.1.0（构建 2）**，Apple Silicon，macOS 13 或以上。
+轻量原生 macOS 桌面宠物，使用 Swift + AppKit。当前版本 **0.2.0（构建 3）**，Apple Silicon，macOS 13 或以上。
 
 ## 打开与使用
 
 从 GitHub Releases 下载 `Naomi-macOS-arm64.zip`，解压后双击 `Nuomi.app`。也可以自行构建后打开 `build/Nuomi.app`。本地已创建桌面「糯米」替身的用户，可继续使用该入口。
 
 - 默认坐着，偶尔眨眼；点击猫的左半边向右跑，右半边向左跑，**每次 1 秒**。
-- 无人互动 **120 秒**后低伏休息，**180 秒**后闭眼睡觉；点击或拖动可唤醒。
-- 拖动可调整水平位置或移到另一屏，松开后吸附到对应屏幕底边。
+- 无人互动 **120 秒**后侧躺休息，**180 秒**后侧躺歪头睡觉，带轻微呼吸、睡泡和飘动 Zzz；点击或拖动可唤醒。
+- 拖动时切换为后颈被轻轻拎住、四肢放松下垂的姿态；可移到另一屏，松开后坐回对应屏幕底边。
 - 菜单栏「糯米 🐾」或右键菜单：暂停/继续、大小、穿透点击、移到鼠标屏幕、回到底边、退出。
 - 开启穿透点击后需从菜单栏关闭，才能再次点击和拖动猫。
 
@@ -44,6 +44,8 @@ build/Nuomi.app           构建产物（不纳入 Git）
 
 桌面动画使用原始透明精灵图 `spritesheet-extended.png`，1536×2288、8 列×11 行，每格192×208；SHA-256 为 `60f570e0c9830f1c4f5fa85782f73da2bb0eed776b0654deee42ef4a42d705ed`。
 
+新增睡姿和提起姿态为 `assets/sleeping.png` 与 `assets/carried.png`，提示词见 `assets/pose-prompts.txt`。
+
 图标按用户最终选择使用最初坐姿白猫，内置 imagegen 去除粉色背景；提示词保存在 `assets/icon-prompt.txt`，透明母图为 `assets/Nuomi-icon-source.png`。不使用此前生成的直立新稿。macOS 可能为图标添加自己的圆角底板。
 
 需要重新生成图标时：
@@ -66,7 +68,7 @@ iconutil -c icns assets/Nuomi.iconset -o assets/Nuomi.icns
 
 依据 `NSScreen.visibleFrame` 避开 Dock 保留区域，不追踪单个 Dock 图标的真实轮廓。自动隐藏 Dock 弹出时可能短暂遮挡猫。多屏一次只有一只猫，断开屏幕后会移回可用显示器。
 
-素材没有真正趴睡帧：低伏使用跳跃首帧，睡觉使用坐姿闭眼帧。此处是已有动作的近似，而非全新趴睡动画。
+睡觉和拖动使用依据原有糯米形象生成的独立透明姿态。睡眠特效以 8 Hz 更新，暂停及显示器休眠时停止。拖动姿态随鼠标事件更新。
 
 ## 项目与分享
 

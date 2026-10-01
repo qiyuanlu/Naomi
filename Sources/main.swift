@@ -4,39 +4,6 @@ final class PetPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
-final class PetView: NSView {
-    var sprite: NSImage?
-    var onDrag: ((NSEvent) -> Void)?
-    var onDrop: (() -> Void)?
-    var controls: NSMenu?
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func accessibilityPerformPress() -> Bool {
-        showControls()
-        return true
-    }
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.clear.setFill()
-        dirtyRect.fill(using: .copy)
-        sprite?.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1)
-    }
-    override func mouseDown(with event: NSEvent) { onDrag?(event) }
-    override func mouseDragged(with event: NSEvent) { onDrag?(event) }
-    override func mouseUp(with event: NSEvent) { onDrop?() }
-    override func rightMouseDown(with event: NSEvent) {
-        showControls()
-    }
-    func showControls() {
-        guard let controls, let window else { return }
-        let visible = window.screen?.visibleFrame ?? window.frame
-        let menuSize = controls.size
-        // Position the compact menu above the pet, fully inside the usable display.
-        let anchor = NSPoint(
-            x: max(visible.minX + 6, min(window.frame.midX - menuSize.width/2, visible.maxX - menuSize.width - 6)),
-            y: min(visible.maxY - 6, window.frame.maxY + menuSize.height + 6))
-        let point = convert(window.convertPoint(fromScreen: anchor), from: nil)
-        controls.popUp(positioning: nil, at: point, in: self)
-    }
-}
 final class PetApp: NSObject, NSApplicationDelegate {
     var panel: PetPanel!
     let view = PetView()
@@ -44,6 +11,8 @@ final class PetApp: NSObject, NSApplicationDelegate {
     var timer: Timer?
     var environmentTimer: Timer?
     var frames: [[NSImage]] = []
+    var sleepingImage: NSImage!
+    var carriedImage: NSImage!
     var screen: NSScreen!
     var direction: CGFloat = 1
     var x: CGFloat = 0
@@ -77,6 +46,12 @@ final class PetApp: NSObject, NSApplicationDelegate {
                 return NSImage(cgImage: crop, size: CGSize(width: 192, height: 208))
             })
         }
+        guard let sleepURL = Bundle.main.url(forResource: "sleeping", withExtension: "png"),
+              let carryURL = Bundle.main.url(forResource: "carried", withExtension: "png"),
+              let sleepImage = NSImage(contentsOf: sleepURL), let carryImage = NSImage(contentsOf: carryURL) else {
+            NSApp.terminate(nil); return
+        }
+        sleepingImage = sleepImage; carriedImage = carryImage
         screen = NSScreen.main ?? NSScreen.screens[0]
         panel = PetPanel(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false
@@ -122,7 +97,7 @@ final class PetApp: NSObject, NSApplicationDelegate {
     }
     func schedule() {
         timer?.invalidate(); timer = nil
-        guard !paused && !sleeping && !dragging && behavior.mood != .asleep else { return }
+        guard !paused && !sleeping && !dragging else { return }
         lastTime = ProcessInfo.processInfo.systemUptime
         let interval = behavior.mood == .resting ? 1.0 : (row == 1 || row == 2 ? 1.0/24 : 1.0/8)
         let t = Timer(timeInterval: interval, repeats: true) { [weak self] _ in self?.tick() }
@@ -156,8 +131,11 @@ final class PetApp: NSObject, NSApplicationDelegate {
         render()
     }
     func render() {
-        let next = frames[row][frameIndex % frames[row].count]
-        if view.sprite !== next { view.sprite = next; view.needsDisplay = true }
+        let pose = PetPresentation(mood: behavior.mood, isCarried: dragging && didDrag)
+        let next = pose == .carried ? carriedImage! : pose == .lying || pose == .sleeping ? sleepingImage! : frames[row][frameIndex % frames[row].count]
+        let changed = view.sprite !== next || view.pose != pose
+        view.pose = pose; view.elapsed = animationElapsed
+        if changed || pose == .sleeping { view.sprite = next; view.needsDisplay = true }
     }
     func place() { x = track.clamp(x); panel.setFrame(CGRect(x: x, y: track.y, width: size.width, height: size.height), display: true) }
     func drag(_ event: NSEvent) {
@@ -168,7 +146,12 @@ final class PetApp: NSObject, NSApplicationDelegate {
             clickLeftHalf = dragOffset.x < size.width/2
             schedule(); return
         }
-        if hypot(mouse.x-downPoint.x, mouse.y-downPoint.y) > 4 { didDrag = true }
+        if !didDrag && hypot(mouse.x-downPoint.x, mouse.y-downPoint.y) > 4 {
+            didDrag = true
+            // The pointer holds the nape while the relaxed body hangs underneath.
+            dragOffset = NSPoint(x: size.width * 0.52, y: size.height * 0.73)
+            render()
+        }
         if didDrag { panel.setFrameOrigin(NSPoint(x: mouse.x-dragOffset.x, y: mouse.y-dragOffset.y)) }
     }
     func drop() {
